@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vindex - SentinelShield AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1 class="brand-name">Vindex</h1>
+            <span class="brand-subtitle">SentinelShield AI</span>
+        </div>
+        <div class="header-right">
+            <span class="status-badge" id="system-status">
+                <span class="status-dot"></span>
+                System Online
+            </span>
+            <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+                <span class="sun-icon">&#9728;</span>
+                <span class="moon-icon">&#9790;</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Metric Cards -->
+    <section class="metrics-section">
+        <div class="metric-card" id="card-total">
+            <div class="metric-label">Total Disputes</div>
+            <div class="metric-value" id="metric-total">0</div>
+            <div class="metric-subtitle">Ingested</div>
+        </div>
+        <div class="metric-card" id="card-auto">
+            <div class="metric-label">Auto-Submission</div>
+            <div class="metric-value" id="metric-auto">0%</div>
+            <div class="metric-subtitle">Rate</div>
+        </div>
+        <div class="metric-card" id="card-escalate">
+            <div class="metric-label">Escalation</div>
+            <div class="metric-value" id="metric-escalate">0%</div>
+            <div class="metric-subtitle">Rate</div>
+        </div>
+        <div class="metric-card" id="card-recovery">
+            <div class="metric-label">Net Recovery</div>
+            <div class="metric-value" id="metric-recovery">Rs. 0</div>
+            <div class="metric-subtitle">INR</div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dispute Stream (Left) -->
+        <section class="dispute-stream">
+            <div class="section-header">
+                <h2>Live Dispute Stream</h2>
+                <button class="refresh-btn" id="refresh-btn" title="Refresh disputes">&#8635;</button>
+            </div>
+            <div class="dispute-list" id="dispute-list">
+                <div class="empty-state">Loading disputes...</div>
+            </div>
+        </section>
+
+        <!-- Review Inspector (Right) -->
+        <section class="review-inspector">
+            <div class="section-header">
+                <h2>Review Inspector</h2>
+            </div>
+            <div class="inspector-content" id="inspector-content">
+                <div class="empty-state">Select a dispute from the stream to view details</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Benchmark Section -->
+    <section class="benchmark-section">
+        <div class="section-header">
+            <h2>Benchmark Evaluation</h2>
+        </div>
+        <div class="benchmark-content">
+            <div class="benchmark-controls">
+                <button class="benchmark-btn" id="benchmark-btn">
+                    Run 200-Case Evaluation Suite
+                </button>
+                <span class="benchmark-status" id="benchmark-status"></span>
+            </div>
+            <div class="benchmark-progress" id="benchmark-progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <span class="progress-text" id="progress-text">0/200</span>
+            </div>
+            <div class="benchmark-results" id="benchmark-results" style="display: none;">
+                <div class="result-item">
+                    <span class="result-label">Accuracy:</span>
+                    <span class="result-value" id="result-accuracy">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">AWB Precision:</span>
+                    <span class="result-value" id="result-awb">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Mean Latency:</span>
+                    <span class="result-value" id="result-latency">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Net Yield:</span>
+                    <span class="result-value" id="result-yield">-</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
