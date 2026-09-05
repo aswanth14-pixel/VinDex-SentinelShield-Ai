@@ -3,6 +3,9 @@
 > An autonomous dispute defense and evidence orchestration engine for Razorpay merchants.
 
 ---
+<img width="2272" height="226" alt="image" src="https://github.com/user-attachments/assets/5dda232c-1e7d-4fce-a548-b0e8dcc0631e" />
+
+---
 
 ## Table of Contents
 
