@@ -19,6 +19,42 @@ function toggleTheme() {
     const next = current === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
+    showToast('Theme Changed', `Switched to ${next} mode`, 'info');
+}
+
+// ========================================
+// Toast Notifications
+// ========================================
+
+function showToast(title, message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const icons = {
+        success: '✅',
+        warning: '⚠️',
+        error: '❌',
+        info: 'ℹ️'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${icons[type]}</span>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.style.animation = 'slideOutRight 0.5s ease forwards';
+            setTimeout(() => toast.remove(), 500);
+        }
+    }, 4000);
 }
 
 // ========================================
@@ -105,10 +141,12 @@ async function updateMetricCards() {
 
     let autoCount = 0;
     let escalateCount = 0;
+    let recoveryAmount = 0;
 
     stats.by_status.forEach(s => {
         if (s.status && s.status.toUpperCase().includes('AUTO_SUBMIT')) {
             autoCount = s.count;
+            recoveryAmount += s.total_amount || 0;
         }
         if (s.status && s.status.toUpperCase().includes('ESCALAT')) {
             escalateCount = s.count;
@@ -120,11 +158,44 @@ async function updateMetricCards() {
 
     document.getElementById('metric-auto').textContent = autoRate + '%';
     document.getElementById('metric-escalate').textContent = escalateRate + '%';
-    document.getElementById('metric-recovery').textContent = 'Rs. 0';
+    document.getElementById('metric-recovery').textContent = formatAmount(recoveryAmount);
+}
+
+// ========================================
+// Webhook Detection & Toast
+// ========================================
+
+let lastDisputeCount = 0;
+let isFirstLoad = true;
+
+async function checkForNewDisputes() {
+    const data = await fetchDisputes();
+    const currentCount = data.disputes ? data.disputes.length : 0;
+
+    if (!isFirstLoad && lastDisputeCount > 0 && currentCount > lastDisputeCount) {
+        const newest = data.disputes[0];
+        const amount = formatAmount(newest.amount);
+        const status = getStatusLabel(newest.status);
+
+        let toastType = 'info';
+        if (status.includes('Auto')) toastType = 'success';
+        if (status.includes('Review')) toastType = 'warning';
+        if (status.includes('Abandon')) toastType = 'error';
+
+        showToast(
+            '🔔 New Dispute Received',
+            `${newest.id} • ${amount} • ${status}`,
+            toastType
+        );
+    }
+
+    isFirstLoad = false;
+    lastDisputeCount = currentCount;
+    return data;
 }
 
 async function updateDisputeStream() {
-    const data = await fetchDisputes();
+    const data = await checkForNewDisputes();
     const list = document.getElementById('dispute-list');
 
     if (!data.disputes || data.disputes.length === 0) {
@@ -170,7 +241,7 @@ async function selectDispute(disputeId) {
     document.getElementById('inspector-content').innerHTML = `
         <div class="inspector-grid">
             <div class="inspector-panel">
-                <h3>Order Details</h3>
+                <h3>📋 Order Details</h3>
                 <div class="info-row">
                     <span class="info-label">Dispute ID</span>
                     <span class="info-value">${detail.id}</span>
@@ -201,7 +272,7 @@ async function selectDispute(disputeId) {
                 </div>
             </div>
             <div class="inspector-panel">
-                <h3>Evaluation Results</h3>
+                <h3>📊 Evaluation Results</h3>
                 <div class="win-gauge">
                     <div class="gauge-bar">
                         <div class="gauge-fill" style="width: ${winProb}%"></div>
@@ -211,7 +282,7 @@ async function selectDispute(disputeId) {
                         <span>${winProb}%</span>
                     </div>
                 </div>
-                <div style="text-align: center; margin-top: 0.75rem;">
+                <div style="text-align: center; margin-top: 1rem;">
                     <span class="action-badge ${actionClass}">${action}</span>
                 </div>
                 <div style="margin-top: 1rem;">
@@ -225,12 +296,14 @@ async function selectDispute(disputeId) {
                     </div>
                 </div>
                 <div class="inspector-actions">
-                    <button class="btn-approve" onclick="reviewDispute('${detail.id}', 'approve')">Approve Contest</button>
-                    <button class="btn-dismiss" onclick="reviewDispute('${detail.id}', 'dismiss')">Dismiss</button>
+                    <button class="btn-approve" onclick="reviewDispute('${detail.id}', 'approve')">✓ Approve Contest</button>
+                    <button class="btn-dismiss" onclick="reviewDispute('${detail.id}', 'dismiss')">✕ Dismiss</button>
                 </div>
             </div>
         </div>
     `;
+
+    showToast('Dispute Selected', `Viewing details for ${detail.id}`, 'info');
 }
 
 async function reviewDispute(disputeId, action) {
@@ -246,9 +319,16 @@ async function reviewDispute(disputeId, action) {
             await updateMetricCards();
             document.getElementById('inspector-content').innerHTML =
                 '<div class="empty-state">Dispute ' + action + 'd successfully</div>';
+            
+            showToast(
+                action === 'approve' ? '✅ Approved' : '❌ Dismissed',
+                `Dispute ${disputeId} has been ${action}d`,
+                action === 'approve' ? 'success' : 'warning'
+            );
         }
     } catch (err) {
         console.error('Review error:', err);
+        showToast('Error', 'Failed to process review', 'error');
     }
 }
 
@@ -274,6 +354,8 @@ async function runBenchmark() {
     progress.style.display = 'block';
     results.style.display = 'none';
 
+    showToast('Benchmark Started', 'Running 200-case evaluation suite...', 'info');
+
     let progressVal = 0;
     const progressInterval = setInterval(() => {
         if (progressVal < 90) {
@@ -291,7 +373,7 @@ async function runBenchmark() {
         const m = data.metrics;
         progressFill.style.width = '100%';
         progressText.textContent = '200/200';
-        status.textContent = 'Completed';
+        status.textContent = 'Completed ✓';
 
         document.getElementById('result-accuracy').textContent =
             (m.accuracy * 100).toFixed(1) + '%';
@@ -303,8 +385,15 @@ async function runBenchmark() {
             'Rs. ' + m.financial.net_yield_inr.toLocaleString('en-IN');
 
         results.style.display = 'grid';
+        
+        showToast(
+            'Benchmark Complete',
+            `Accuracy: ${(m.accuracy * 100).toFixed(1)}% • Yield: Rs. ${m.financial.net_yield_inr.toLocaleString('en-IN')}`,
+            'success'
+        );
     } else {
-        status.textContent = 'Failed';
+        status.textContent = 'Failed ✗';
+        showToast('Benchmark Failed', 'An error occurred during evaluation', 'error');
     }
 
     btn.disabled = false;
@@ -322,12 +411,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refresh-btn').addEventListener('click', () => {
         updateDisputeStream();
         updateMetricCards();
+        showToast('Refreshed', 'Dispute stream updated', 'success');
     });
     document.getElementById('benchmark-btn').addEventListener('click', runBenchmark);
 
     updateMetricCards();
     updateDisputeStream();
 
+    // Auto-refresh every 10 seconds
     setInterval(() => {
         updateDisputeStream();
         updateMetricCards();
