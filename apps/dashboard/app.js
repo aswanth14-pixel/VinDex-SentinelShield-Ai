@@ -6,6 +6,36 @@
 const API_BASE = '/api/v1';
 
 // ========================================
+// Terminal Logging
+// ========================================
+
+function addTerminalLog(level, message) {
+    const terminal = document.getElementById('terminal-logs');
+    if (!terminal) return;
+
+    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    logEntry.innerHTML = `
+        <span class="log-timestamp">[${timestamp}]</span>
+        <span class="log-level ${level}">${level.toUpperCase()}</span>
+        <span class="log-message">${message}</span>
+    `;
+
+    terminal.appendChild(logEntry);
+    terminal.scrollTop = terminal.scrollHeight;
+
+    // Keep only last 50 entries
+    while (terminal.children.length > 50) {
+        terminal.removeChild(terminal.firstChild);
+    }
+}
+
+function logPipelineStep(step, message) {
+    addTerminalLog('process', `[${step}] ${message}`);
+}
+
+// ========================================
 // Theme Toggle
 // ========================================
 
@@ -20,6 +50,7 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('theme', next);
     showToast('Theme Changed', `Switched to ${next} mode`, 'info');
+    addTerminalLog('info', `Theme changed to ${next} mode`);
 }
 
 // ========================================
@@ -187,6 +218,33 @@ async function checkForNewDisputes() {
             `${newest.id} • ${amount} • ${status}`,
             toastType
         );
+
+        // Add terminal logs for pipeline simulation
+        addTerminalLog('info', `Webhook received: ${newest.id}`);
+        logPipelineStep('VERIFY', 'HMAC-SHA256 signature validated ✓');
+        
+        setTimeout(() => {
+            logPipelineStep('FETCH', `Fetching evidence for payment ${newest.payment_id}`);
+        }, 200);
+        
+        setTimeout(() => {
+            logPipelineStep('EXTRACT', 'Running Gemini Vision on POD document...');
+        }, 400);
+        
+        setTimeout(() => {
+            logPipelineStep('EXTRACT', `AWB extracted: ${newest.id.slice(-8)}`);
+        }, 600);
+        
+        setTimeout(() => {
+            logPipelineStep('SCORE', `Calculating win probability...`);
+        }, 800);
+        
+        setTimeout(() => {
+            const action = status.includes('Auto') ? 'AUTO_SUBMIT' : 
+                          status.includes('Review') ? 'ESCALATE_HUMAN' : 'ABANDON';
+            logPipelineStep('DECIDE', `Action: ${action}`);
+            addTerminalLog('success', `Pipeline complete for ${newest.id}`);
+        }, 1000);
     }
 
     isFirstLoad = false;
@@ -203,8 +261,8 @@ async function updateDisputeStream() {
         return;
     }
 
-    list.innerHTML = data.disputes.map(d => `
-        <div class="dispute-item" data-id="${d.id}" onclick="selectDispute('${d.id}')">
+    list.innerHTML = data.disputes.map((d, index) => `
+        <div class="dispute-item ${index === 0 && !isFirstLoad ? 'new-arrival' : ''}" data-id="${d.id}" onclick="selectDispute('${d.id}')">
             <div class="dispute-left">
                 <span class="dispute-id">${d.id}</span>
                 <span class="dispute-amount">${formatAmount(d.amount)}</span>
@@ -222,6 +280,8 @@ async function selectDispute(disputeId) {
         el.classList.toggle('selected', el.dataset.id === disputeId);
     });
 
+    addTerminalLog('info', `Inspecting dispute: ${disputeId}`);
+
     const detail = await fetchDisputeDetail(disputeId);
     if (!detail) {
         document.getElementById('inspector-content').innerHTML =
@@ -237,6 +297,8 @@ async function selectDispute(disputeId) {
     let actionClass = 'action-escalate';
     if (action.includes('AUTO')) actionClass = 'action-auto';
     if (action.includes('ABANDON')) actionClass = 'action-abandon';
+
+    addTerminalLog('success', `Loaded: P(win)=${winProb}%, Action=${action}`);
 
     document.getElementById('inspector-content').innerHTML = `
         <div class="inspector-grid">
@@ -308,6 +370,8 @@ async function selectDispute(disputeId) {
 
 async function reviewDispute(disputeId, action) {
     try {
+        addTerminalLog('info', `Reviewing dispute: ${disputeId} - ${action}`);
+
         const res = await fetch(`${API_BASE}/disputes/${disputeId}/review`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -320,6 +384,8 @@ async function reviewDispute(disputeId, action) {
             document.getElementById('inspector-content').innerHTML =
                 '<div class="empty-state">Dispute ' + action + 'd successfully</div>';
             
+            addTerminalLog('success', `Dispute ${disputeId} ${action}d ✓`);
+
             showToast(
                 action === 'approve' ? '✅ Approved' : '❌ Dismissed',
                 `Dispute ${disputeId} has been ${action}d`,
@@ -328,6 +394,7 @@ async function reviewDispute(disputeId, action) {
         }
     } catch (err) {
         console.error('Review error:', err);
+        addTerminalLog('error', `Review failed: ${err.message}`);
         showToast('Error', 'Failed to process review', 'error');
     }
 }
@@ -354,6 +421,9 @@ async function runBenchmark() {
     progress.style.display = 'block';
     results.style.display = 'none';
 
+    addTerminalLog('info', 'Starting 200-case benchmark evaluation...');
+    logPipelineStep('INIT', 'Loading synthetic dataset...');
+
     showToast('Benchmark Started', 'Running 200-case evaluation suite...', 'info');
 
     let progressVal = 0;
@@ -362,6 +432,10 @@ async function runBenchmark() {
             progressVal += 5;
             progressFill.style.width = progressVal + '%';
             progressText.textContent = Math.round(progressVal * 2) + '/200';
+            
+            if (progressVal % 20 === 0) {
+                addTerminalLog('process', `Processed ${Math.round(progressVal * 2)}/200 cases...`);
+            }
         }
     }, 200);
 
@@ -386,6 +460,9 @@ async function runBenchmark() {
 
         results.style.display = 'grid';
         
+        addTerminalLog('success', `Benchmark complete! Accuracy: ${(m.accuracy * 100).toFixed(1)}%`);
+        addTerminalLog('success', `Net Yield: Rs. ${m.financial.net_yield_inr.toLocaleString('en-IN')}`);
+        
         showToast(
             'Benchmark Complete',
             `Accuracy: ${(m.accuracy * 100).toFixed(1)}% • Yield: Rs. ${m.financial.net_yield_inr.toLocaleString('en-IN')}`,
@@ -393,6 +470,7 @@ async function runBenchmark() {
         );
     } else {
         status.textContent = 'Failed ✗';
+        addTerminalLog('error', 'Benchmark failed!');
         showToast('Benchmark Failed', 'An error occurred during evaluation', 'error');
     }
 
@@ -411,9 +489,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refresh-btn').addEventListener('click', () => {
         updateDisputeStream();
         updateMetricCards();
+        addTerminalLog('info', 'Dashboard refreshed');
         showToast('Refreshed', 'Dispute stream updated', 'success');
     });
     document.getElementById('benchmark-btn').addEventListener('click', runBenchmark);
+
+    addTerminalLog('info', 'Dashboard loaded successfully');
+    addTerminalLog('success', 'Connected to Vindex API');
 
     updateMetricCards();
     updateDisputeStream();

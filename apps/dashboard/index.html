@@ -116,6 +116,30 @@
         </div>
     </section>
 
+    <!-- Terminal Log Panel -->
+    <section class="terminal-section">
+        <div class="terminal-header">
+            <h2><span class="section-icon">💻</span> Pipeline Logs</h2>
+            <div class="terminal-dots">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+            </div>
+        </div>
+        <div class="terminal-body" id="terminal-logs">
+            <div class="log-entry">
+                <span class="log-timestamp">[System]</span>
+                <span class="log-level info">INIT</span>
+                <span class="log-message">Vindex SentinelShield AI initialized</span>
+            </div>
+            <div class="log-entry">
+                <span class="log-timestamp">[System]</span>
+                <span class="log-level success">READY</span>
+                <span class="log-message">Waiting for dispute webhooks...</span>
+            </div>
+        </div>
+    </section>
+
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
